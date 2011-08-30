@@ -1,0 +1,4 @@
+.importcsv_error {text-align:center; color:red; font-weight:bold;}
+.importcsv_container {overflow:auto}
+table.importcsv_preview {border-collapse:collapse}
+table.importcsv_preview th, table.importcsv_preview td {border:1px solid #ccc; padding:5px;}
