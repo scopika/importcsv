@@ -56,5 +56,9 @@ foreach((array) $dataPreview as $key => $datas) { ?>
 ?>
 </tbody>
 </table>
+<p>
+	<label for="importcsv_ignoreFirstRow">Ignorer la première ligne</label>
+	<input type="checkbox" name="importcsv_ignoreFirstRow" id="importcsv_ignoreFirstRow" />
+</p>
 <input type="submit" name="submit" value="Enregistrer">
 </form>

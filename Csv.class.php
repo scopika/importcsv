@@ -38,7 +38,7 @@ class Csv {
     }   
     
     public function getPreview($lines=null) {
-        
+        $this->gotoFirstLine();
         $lines = (preg_match('/^[0-9]{1,}$/', $lines)) ? $lines : 6;
         
         $datas = array(); // données du CSV
@@ -55,5 +55,10 @@ class Csv {
         $data = fgetcsv($this->_handle, 0, $this->_delimiter);
         if($data === false) return false;
         return $data;
+    }
+    
+    public function gotoFirstLine() {
+        fseek($this->_handle, 0);
+        return $this;
     }
 }
