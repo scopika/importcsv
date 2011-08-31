@@ -13,45 +13,45 @@ $dataPreview = $csv->getPreview();
 <table class="importcsv_preview" cellspacing="0">
 <thead>
 <tr>
-<?php 
+<?php
 for($i=0; $i<$totalCols; $i++) {
     ?>
     <th>
     <select name="col[<?php echo $i; ?>]">
     <option value=""></option>
-    <?php 
+    <?php
     foreach((array) $suggestedFields as $group => $fields) { ?>
        <optgroup label="<?php echo $group; ?>"></optgroup>
        <?php
-       foreach((array) $fields as $key => $field) {  
+       foreach((array) $fields as $key => $field) {
            $selected = (!empty($_POST['col'][$i]) && $_POST['col'][$i] == $key) ? 'selected="selected"' : '';
            ?>
            <option value="<?php echo $key; ?>" <?php echo $selected; ?>>
                <?php echo $field; ?>
            </option>
-           <?php 
+           <?php
        }
     }
     ?>
     </select>
     </th>
-    <?php 
+    <?php
 }
 ?>
 </tr>
 </thead>
 <tbody>
-<?php 
+<?php
 foreach((array) $dataPreview as $key => $datas) { ?>
 <tr>
-	<?php 
+	<?php
 	foreach((array) $datas as $key => $data) { ?>
 		<td><?php echo $data; ?></td>
-	    <?php 
+	    <?php
 	}
 	?>
 </tr>
-<?php 
+<?php
 }
 ?>
 </tbody>
