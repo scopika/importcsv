@@ -1,8 +1,13 @@
 <?php
 include_once(realpath(dirname(__FILE__)) . "/../../../classes/PluginsClassiques.class.php");
 include_once(realpath(dirname(__FILE__)) . "/../../../classes/Accessoire.class.php");
+include_once(realpath(dirname(__FILE__)) . "/../../../classes/Caracdisp.class.php");
+include_once(realpath(dirname(__FILE__)) . "/../../../classes/Caracdispdesc.class.php");
+include_once(realpath(dirname(__FILE__)) . "/../../../classes/Caracteristique.class.php");
+include_once(realpath(dirname(__FILE__)) . "/../../../classes/Caracteristiquedesc.class.php");
 include_once(realpath(dirname(__FILE__)) . "/../../../classes/Produit.class.php");
 include_once(realpath(dirname(__FILE__)) . "/../../../classes/Produitdesc.class.php");
+include_once(realpath(dirname(__FILE__)) . "/../../../classes/Rubcaracteristique.class.php");
 include_once(realpath(dirname(__FILE__)) . "/../../../classes/Rubrique.class.php");
 include_once(realpath(dirname(__FILE__)) . "/../../../classes/Rubriquedesc.class.php");
 
@@ -129,7 +134,7 @@ class Importcsv extends PluginsClassiques {
                         if($col !== false) {
                             // Recherche ou création du produit avec la ref
                             $prodId = $this->_searchProdByRef($csvdata[$col]);
-                            if(!$prodId) { // le produit n'xiste pas => création
+                            if(!$prodId) { // le produit n'existe pas => création
                                 $prodId = $this->_createProd($csvdata[$col], $params['rubrique_id']);
                                 if(!$prodId) {
                                     $this->_error .= '<br/>Impossible de créer le produit ref ' . $csvdata[$col] . ' à la ligne' . $ligne;
@@ -175,6 +180,79 @@ class Importcsv extends PluginsClassiques {
                         $col = current(array_keys($_POST['col'], 'accessoire_ref'));
                         if($col !== false) {
                             $tabRefAccessoires[$params['produit_id']] = array_unique(explode(',', (str_replace(' ', '', $csvdata[$col]))));
+                        }
+
+                        // Colonnes "Id caracdisps"
+                        if(!empty($params['produit_id'])) {
+                            $req = $this->query('SELECT caracteristique.id  FROM ' . Caracteristique::TABLE . ' AS caracteristique');
+                            while($row = mysql_fetch_object($req)) {
+                                $col = current(array_keys($_POST['col'], 'caracteristique_' . $row->id . '_caradispId'));
+                                if($col !== false) {
+                                    // Tableau qui contiendra les ID caracdisp à insérer en base
+                                    $caracdisps = array_unique(explode(',', (str_replace(' ', '', $csvdata[$col]))));
+                                    foreach((array) $caracdisp as $key => $caracdisp) {
+                                        if(!preg_match('/^[0-9]{1,}$/', $caracdisp) || empty($caracdisp)) unset($caracdisps[$key]);
+                                    }
+                                    if(empty($caracdisps)) continue;
+
+                                    // On enlève de $caracdisps les ID déjà présents en base.
+                                    // On en profite pour relever les ID rubriques sur lesquels
+                                    // les caractéristiques correspondantes aux caracdisp devront être activés
+                                    $rubriquesCarac = array();
+                                    $reqExistingCaracvals = $this->query('
+                                        SELECT caracval.caracdisp, produit.rubrique
+                                        FROM ' . Caracval::TABLE . ' AS caracval
+                                            LEFT JOIN ' . Produit::TABLE . ' ON(caracval.produit=produit.id)
+                                        WHERE caracval.produit=' . $params['produit_id'] . '
+                                            AND caracteristique=' . $row->id . '
+                                            AND caracdisp IN(' . implode(',', $caracdisps) . ')'
+                                    );
+                                    while($rowExistingCaracvals = mysql_fetch_object($reqExistingCaracvals)) {
+                                        if(!empty($rowExistingCaracvals->rubrique)) $rubriquesCarac[] = $rowExistingCaracvals->rubrique;
+                                        $keyInArray = array_search($rowExistingCaracvals->caracdisp, $caracdisps);
+                                        if($keyInArray===false) continue;
+                                        unset($caracdisps[$keyInArray]);
+                                    }
+
+                                    // On vérifie d'abord que les caractéristiques soient bien activées
+                                    // sur les rubriques
+                                    $rubriquesCarac = array_unique($rubriquesCarac);
+                                    foreach((array) $rubriquesCarac as $key => $rubrique) {
+                                        $req = $this->query('
+                                            SELECT id FROM ' . Rubcaracteristique::TABLE . '
+                                            WHERE rubrique=' . $rubrique . ' AND caracteristique=' . $row->id);
+                                        if(mysql_num_rows($req) >= 1) {
+                                            unset($rubriquesCarac[$key]);
+                                        }
+                                    }
+                                    if(!empty($rubriquesCarac)) {
+                                        $req_insert = 'INSERT INTO ' . Rubcaracteristique::TABLE. ' (
+                                            `rubrique`, `caracteristique`
+                                        ) VALUES ';
+                                        foreach($rubriquesCarac as $rubrique) {
+                                            $req_insert.= '(' .
+                                                $rubrique . ',' .
+                                                $row->id .'),';
+                                        }
+                                        $req_insert = substr($req_insert, 0, -1); // on vire la dernière virgule
+                                        $this->query($req_insert);
+                                    }
+
+                                    // Insertion des ID caracdisps restants
+                                    if(empty($caracdisps)) continue;
+                                    $req_insert = 'INSERT INTO ' . Caracval::TABLE. ' (
+                                        `produit`, `caracteristique`, `caracdisp`
+                                    ) VALUES ';
+                                    foreach($caracdisps as $caracdisp) {
+                                        $req_insert.= '(' .
+                                            $params['produit_id'] .', ' .
+                                            $row->id . ', ' .
+                                            $caracdisp . '),';
+                                    }
+                                    $req_insert = substr($req_insert, 0, -1); // on vire la dernière virgule
+                                    $this->query($req_insert);
+                                }
+                            }
                         }
                     } // fin du parcourt des lignes du fichier
 
@@ -527,6 +605,21 @@ class Importcsv extends PluginsClassiques {
             $fields['rubrique']['rubrique' . $i . '_titre'] = 'Titre de la rubrique de niveau ' . $i;
             $fields['rubrique']['rubrique' . $i . '_url'] = 'URL de la rubrique de niveau ' . $i;
         }
+        // Les caractéristiques
+        $req = $this->query('
+            SELECT
+                caracteristique.id,
+                caracteristiquedesc.titre
+            FROM ' . Caracteristique::TABLE . ' AS caracteristique
+                LEFT JOIN ' . Caracteristiquedesc::TABLE . ' ON(
+                    caracteristiquedesc.caracteristique=caracteristique.id
+                    AND caracteristiquedesc.lang=1
+                )
+        ');
+        while($row = mysql_fetch_object($req)) {
+            $fields['ID valeurs de caractéristiques (caracdisp)']['caracteristique_' . $row->id . '_caradispId'] = 'ID ' . $row->titre;
+        }
+
         return $fields;
     }
 
