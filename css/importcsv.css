@@ -1,4 +1,10 @@
 .importcsv_error {text-align:center; color:red; font-weight:bold;}
 .importcsv_container {overflow:auto}
+#csvimport_tableoverflow {overflow:auto;}
 table.importcsv_preview {border-collapse:collapse}
 table.importcsv_preview th, table.importcsv_preview td {border:1px solid #ccc; padding:5px;}
+
+table#importcsv_aide {border:1px solid #ccc; border-collapse:collapse;}
+table#importcsv_aide th, table#importcsv_aide td {border:1px solid #ccc; padding:5px; vertical-align:top;}
+table#importcsv_aide th {background:#999999; color:#fff; font-weight:bold; vertical-align:middle}
+table#importcsv_aide .csvimport_exemples {white-space:nowrap}

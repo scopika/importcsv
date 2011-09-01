@@ -597,13 +597,20 @@ class Importcsv extends PluginsClassiques {
                 'produit_ref' => 'Ref produit',
                 'produit_titre' => 'Titre du produit',
                 'produit_url' => 'URL du produit',
-                'accessoire_ref' => 'Réf de produit(s) associés '
+                'accessoire_ref' => 'Réf de produit(s) associés'
             ),
             'rubrique' => array()
         );
         for($i=0; $i<=$this->_rubriquesMaxDepth;$i++) {
-            $fields['rubrique']['rubrique' . $i . '_titre'] = 'Titre de la rubrique de niveau ' . $i;
-            $fields['rubrique']['rubrique' . $i . '_url'] = 'URL de la rubrique de niveau ' . $i;
+            $labelTitre = 'Titre de la ';
+            $labelUrl = 'URL de la ';
+            for($j=0; $j<$i; $j++) {
+                $labelTitre.= 'sous-';
+                $labelUrl.= 'sous-';
+            }
+            $labelTitre .= 'rubrique'; $labelUrl .= 'rubrique';
+            $fields['rubrique']['rubrique' . $i . '_titre'] = $labelTitre;
+            $fields['rubrique']['rubrique' . $i . '_url'] = $labelUrl;
         }
         // Les caractéristiques
         $req = $this->query('
