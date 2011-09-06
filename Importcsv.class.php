@@ -107,8 +107,8 @@ class Importcsv extends PluginsClassiques {
                         $params['produit_ref'] = '';
                         $params['produit_titre'] = '';
 
+                        // Colonnes titre et URl de la rubrique de niveau X ?
                         for($i=0; $i<=$this->_rubriquesMaxDepth; $i++) {
-                            // Colonne "titre de la rubrique de niveau X" ?
                             $col = current(array_keys($_POST['col'], 'rubrique' . $i .'_titre'));
                             if($col !== false) {
                                 $rub = $this->_searchRubriqueByTitre($csvdata[$col], $params['lang']);
@@ -174,6 +174,18 @@ class Importcsv extends PluginsClassiques {
                         $col = current(array_keys($_POST['col'], 'produit_url'));
                         if($col !== false) {
                             $this->_updateProdUrl($params['produit_id'], $csvdata[$col], $lang);
+                        }
+
+                        // Colonne "prix du produit"
+                        $col = current(array_keys($_POST['col'], 'produit_prix'));
+                        if($col !== false) {
+                            $this->_updateProdPrix($params['produit_id'], $csvdata[$col], $lang);
+                        }
+
+                        // Colonne "en ligne / hors-ligne"
+                        $col = current(array_keys($_POST['col'], 'produit_ligne'));
+                        if($col !== false) {
+                            $this->_updateProdLigne($params['produit_id'], $csvdata[$col], $lang);
                         }
 
                         // Colonne "Ref de produits associés" ?
@@ -360,6 +372,36 @@ class Importcsv extends PluginsClassiques {
     }
 
     /**
+     * Mise à jour du statut d'un produit
+     * @param int $idProduit
+     * @param int $ligne
+     */
+    private function _updateProdLigne($idProduit=0, $ligne=0) {
+        if(!preg_match('/^[0-9]{1,}$/', $idProduit)) return false;
+        if(!preg_match('/^[0-1]{1}$/', $ligne)) $ligne=0;
+
+        $req = $this->query('
+            UPDATE ' . Produit::TABLE . '
+            SET ligne=' . $ligne . '
+            WHERE id=' . $idProduit);
+        return $this;
+    }
+
+    /**
+     * Mise à jour du prix d'un produit
+     * @param int $idProduit
+     * @param float $prix
+     */
+    private function _updateProdPrix($idProduit=0, $prix=0) {
+        if(!preg_match('/^[0-9]{1,}$/', $idProduit)) return false;
+        $req = $this->query('
+            UPDATE ' . Produit::TABLE . '
+            SET prix=' . number_format(str_replace(array(',', ' '), array('.', ''), $prix), 2, '.', '') . '
+            WHERE id=' . $idProduit);
+        return $this;
+    }
+
+    /**
      * Mise à jour ou insertion du titre d'un produits
      * @param int $idProduit
      * @param string $titre
@@ -367,7 +409,7 @@ class Importcsv extends PluginsClassiques {
      */
     private function _updateProdTitre($idProduit=0, $titre, $lang=1) {
         $titre = mysql_real_escape_string($titre);
-
+        if(!preg_match('/^[0-9]{1,}$/', $idProduit)) return false;
         if(!preg_match('/^[0-9]{1,}$/', $lang) || $lang < 1) $lang=1;
         $req = $this->query('
         	SELECT id, titre
@@ -381,7 +423,7 @@ class Importcsv extends PluginsClassiques {
              if($row->titre != $titre) { // on met à jour le titre
                  $req = $this->query('
                  	UPDATE ' . Produitdesc::TABLE . '
-                 	SET titre=' . $titre . '
+                 	SET titre="' . $titre . '"
                  	WHERE id=' . $row->id);
              }
          } else { // Le produit n'a pas encore de titre => INSERT
@@ -413,7 +455,7 @@ class Importcsv extends PluginsClassiques {
         if(!preg_match('/^[0-9]{1,}$/', $idProduit)) return false;
         if(empty($url)) return false;
         if(!preg_match('/^[0-9]{1,}$/', $lang) || $lang < 1) $lang=1;
-        $url = rawurlencode($url);
+        $url = $this->filterUrl($url);
 
         $req = $this->query('SELECT rubrique FROM ' . Produit::TABLE . ' WHERE id=' . $idProduit);
         if(mysql_num_rows($req) != 1) return false;
@@ -450,7 +492,7 @@ class Importcsv extends PluginsClassiques {
         if(!preg_match('/^[0-9]{1,}$/', $idRubrique)) return false;
         if(empty($url)) return false;
         if(!preg_match('/^[0-9]{1,}$/', $lang) || $lang < 1) $lang=1;
-        $url = rawurlencode($url);
+        $url = $this->filterUrl($url);
 
         $req = $this->query('
             SELECT id, url
@@ -585,6 +627,10 @@ class Importcsv extends PluginsClassiques {
         return $idRubrique;
     }
 
+    public function filterUrl($url) {
+        return rawurlencode(preg_replace('/[^a-z0-9\-\_\&\=]/i', '', strtolower($url)));
+    }
+
     /**
      * Dresse une liste des champs proposés pour faire
      * la correspondance avec les colonnes de données
@@ -597,6 +643,8 @@ class Importcsv extends PluginsClassiques {
                 'produit_ref' => 'Ref produit',
                 'produit_titre' => 'Titre du produit',
                 'produit_url' => 'URL du produit',
+                'produit_prix' => 'Prix TTC du produit',
+                'produit_ligne' => 'En ligne ? (0 ou 1)',
                 'accessoire_ref' => 'Réf de produit(s) associés'
             ),
             'rubrique' => array()
