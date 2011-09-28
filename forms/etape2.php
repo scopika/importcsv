@@ -62,6 +62,10 @@ foreach((array) $dataPreview as $key => $datas) { ?>
 	<label for="importcsv_ignoreFirstRow">Ignorer la première ligne</label>
 	<input type="checkbox" name="importcsv_ignoreFirstRow" id="importcsv_ignoreFirstRow" />
 </p>
+<p>
+    <label for="importcsv_ignoreIfProdExists">Ignorer l'import si la ref produit existe</label>
+    <input type="checkbox" name="importcsv_ignoreIfProdExists" id="importcsv_ignoreIfProdExists" />
+</p>
 <input type="submit" name="submit" value="Enregistrer">
 </form>
 

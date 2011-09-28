@@ -107,7 +107,7 @@ class Importcsv extends PluginsClassiques {
                         $params['produit_ref'] = '';
                         $params['produit_titre'] = '';
 
-                        // Colonnes titre et URl de la rubrique de niveau X ?
+                        // Colonnes titre et URL de la rubrique de niveau X ?
                         for($i=0; $i<=$this->_rubriquesMaxDepth; $i++) {
                             $col = current(array_keys($_POST['col'], 'rubrique' . $i .'_titre'));
                             if($col !== false) {
@@ -137,10 +137,10 @@ class Importcsv extends PluginsClassiques {
                             if(!$prodId) { // le produit n'existe pas => création
                                 $prodId = $this->_createProd($csvdata[$col], $params['rubrique_id']);
                                 if(!$prodId) {
-                                    $this->_error .= '<br/>Impossible de créer le produit ref ' . $csvdata[$col] . ' à la ligne' . $ligne;
+                                    $this->_error .= '<br/>Impossible de créer le produit ref ' . $csvdata[$col] . ' à la ligne' . $ligne . ' (aucune rubrique spécifiée ?)';
                                     continue;
                                 }
-                            }
+                            } elseif(!empty($_POST['importcsv_ignoreIfProdExists'])) continue;
                             $params['produit_id'] = $prodId;
                             $params['produit_ref'] = $csvdata[$col];
                             unset($prodId);
@@ -202,10 +202,10 @@ class Importcsv extends PluginsClassiques {
                                 if($col !== false) {
                                     // Tableau qui contiendra les ID caracdisp à insérer en base
                                     $caracdisps = array_unique(explode(',', (str_replace(' ', '', $csvdata[$col]))));
-                                    foreach((array) $caracdisp as $key => $caracdisp) {
+                                    foreach((array) $caracdisps as $key => $caracdisp) {
                                         if(!preg_match('/^[0-9]{1,}$/', $caracdisp) || empty($caracdisp)) unset($caracdisps[$key]);
                                     }
-                                    if(empty($caracdisps)) continue;
+                                    if(empty($caracdisps) || count($caracdisps)==0) continue;
 
                                     // On enlève de $caracdisps les ID déjà présents en base.
                                     // On en profite pour relever les ID rubriques sur lesquels
@@ -628,6 +628,12 @@ class Importcsv extends PluginsClassiques {
     }
 
     public function filterUrl($url) {
+        // suppression des accents
+        $url = htmlentities($url, ENT_NOQUOTES, 'utf-8');
+        $url = preg_replace('#&([A-za-z])(?:acute|cedil|circ|grave|orn|ring|slash|th|tilde|uml);#', '\1', $url);
+        $url = preg_replace('#&([A-za-z]{2})(?:lig);#', '\1', $url); // pour les ligatures e.g. '&oelig;'
+        $url = preg_replace('#&[^;]+;#', '', $url); // supprime les autres caractères
+
         return rawurlencode(preg_replace('/[^a-z0-9\-\_\&\=]/i', '', strtolower($url)));
     }
 
